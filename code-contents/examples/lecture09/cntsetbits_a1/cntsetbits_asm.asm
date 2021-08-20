@@ -9,7 +9,7 @@ section .text
 ; rdi=x
 cntsetbits_asm:
 
-    mov rax, 0     ; we will keep our count here
+    xor eax, eax     ; we will keep our count here
     
     xor cl, cl
 

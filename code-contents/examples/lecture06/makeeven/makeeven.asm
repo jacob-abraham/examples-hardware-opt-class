@@ -9,7 +9,7 @@ _start:
 
     xor rax, rax
     mov al, [alen]                  ; load the array length
-    mov rcx, 0                      ; init counter
+    xor eax, eax                      ; init counter
     loop_top: 
         cmp rax, rcx                ; ZF will equal 1 when counter reaches the length
         je loop_end

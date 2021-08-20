@@ -21,6 +21,7 @@ struct test_args {
     float* result = ((struct test_args*)ARGS)->result;                         \
     size_t n = ((struct test_args*)ARGS)->n;
 
+//#pragma STDC FP_CONTRACT ON
 void* scalar_dp(void* arg) {
     UNPACK_ARGS(arg)
     float sum = 0;

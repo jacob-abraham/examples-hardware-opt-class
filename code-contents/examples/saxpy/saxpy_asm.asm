@@ -10,7 +10,7 @@ section .text
 saxpy_asm:
 
     movss xmm0, [rdi]     ;load scalar
-    mov rax, 0     ;load loop counter
+    xor eax, eax     ;load loop counter
     
 loop_saxpy:
     cmp rax, r8      ;cmp to size
@@ -37,7 +37,7 @@ done_saxpy:
 saxpy_bad_asm:
 
     movss xmm0, [rdi]     ;load scalar
-    mov rax, 0     ;load loop counter
+    xor eax, eax     ;load loop counter
     
 loop_saxpy_bad:
     cmp rax, r8      ;cmp to size
@@ -66,7 +66,7 @@ saxpy_asm_sse:
 
     movss xmm0, [rdi]     ;load scalar
     shufps xmm0, xmm0, 0 ; broadcast from index 0 to all location
-    mov rax, 0     ;load loop counter
+    xor eax, eax    ;load loop counter
     
 loop_saxpy_sse:
     cmp rax, r8      ;cmp to size

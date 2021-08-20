@@ -38,7 +38,8 @@ hardware_hadd:
                       ; 12
     
     %ifdef BENCHMARK
-    loopne hardware_hadd.looptop
+    dec rcx
+    jnz hardware_hadd.looptop
     %endif
 
     ; store
@@ -86,7 +87,8 @@ emulate_hadd_1:
                                  ; 10/12
 
     %ifdef BENCHMARK
-    loopne emulate_hadd_1.looptop
+    dec rcx
+    jnz emulate_hadd_1.looptop
     %endif
     ; store
     movss [rdx], xmm0
@@ -129,7 +131,8 @@ emulate_hadd_2:
                        ; 10
 
     %ifdef BENCHMARK
-    loopne emulate_hadd_2.looptop
+    dec rcx
+    jnz emulate_hadd_2.looptop
     %endif
 
     ; store

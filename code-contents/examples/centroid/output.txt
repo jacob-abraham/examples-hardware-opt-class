@@ -1,0 +1,39 @@
+clang -Wall -Wextra -g -msse -msse2 -msse3 -mssse3 -msse4.1 -msse4.2 -msse4 -mavx -mavx2 -mfma -masm=intel  -MMD -MP -I../../timing -c centroid.c -o centroid.o
+nasm -felf64 centroid_SoA.asm -o centroid_SoA.o
+nasm -felf64 centroid_AoS.asm -o centroid_AoS.o
+nasm -felf64 centroid_AoSoA.asm -o centroid_AoSoA.o
+clang  centroid.o centroid_SoA.o centroid_AoS.o centroid_AoSoA.o -o centroid_clang.out
+gcc -Wall -Wextra -g -msse -msse2 -msse3 -mssse3 -msse4.1 -msse4.2 -msse4 -mavx -mavx2 -mfma -masm=intel  -MMD -MP -I../../timing -c centroid.c -o centroid.o
+nasm -felf64 centroid_SoA.asm -o centroid_SoA.o
+nasm -felf64 centroid_AoS.asm -o centroid_AoS.o
+nasm -felf64 centroid_AoSoA.asm -o centroid_AoSoA.o
+gcc  centroid.o centroid_SoA.o centroid_AoS.o centroid_AoSoA.o -o centroid_gcc.out
+clang
+centroid_AoS_c  : Mean: 30.4951ms Variance:  3.4971ms
+centroid_AoS_i  : Mean: 47.4277ms Variance:  1.2939ms
+centroid_AoS_a  : Mean:  5.9328ms Variance:  0.0443ms
+centroid_SoA_c  : Mean: 34.6645ms Variance:  0.1162ms
+centroid_SoA_i  : Mean:  9.7893ms Variance: 10.0895ms
+centroid_SoA_a  : Mean:  1.3423ms Variance:  0.0026ms
+centroid_AoSoA_c: Mean: 37.4925ms Variance:  0.6594ms
+centroid_AoSoA_i: Mean:  7.5101ms Variance:  0.0945ms
+centroid_AoSoA_a: Mean:  1.5046ms Variance:  0.0041ms
+gcc
+centroid_AoS_c  : Mean: 31.7017ms Variance:  0.1936ms
+centroid_AoS_i  : Mean: 14.9357ms Variance:  0.1324ms
+centroid_AoS_a  : Mean:  6.1176ms Variance:  0.2659ms
+centroid_SoA_c  : Mean: 34.6884ms Variance:  0.1253ms
+centroid_SoA_i  : Mean: 10.8279ms Variance:  0.0210ms
+centroid_SoA_a  : Mean:  1.3377ms Variance:  0.0058ms
+centroid_AoSoA_c: Mean: 37.0612ms Variance: 80.1712ms
+centroid_AoSoA_i: Mean:  7.6655ms Variance:  0.0172ms
+centroid_AoSoA_a: Mean:  1.4813ms Variance:  0.0027ms
+Files exp.dat and ./centroid_AoS_a.dat are identical
+Files exp.dat and ./centroid_AoS_c.dat are identical
+Files exp.dat and ./centroid_AoS_i.dat are identical
+Files exp.dat and ./centroid_AoSoA_a.dat are identical
+Files exp.dat and ./centroid_AoSoA_c.dat are identical
+Files exp.dat and ./centroid_AoSoA_i.dat are identical
+Files exp.dat and ./centroid_SoA_a.dat are identical
+Files exp.dat and ./centroid_SoA_c.dat are identical
+Files exp.dat and ./centroid_SoA_i.dat are identical

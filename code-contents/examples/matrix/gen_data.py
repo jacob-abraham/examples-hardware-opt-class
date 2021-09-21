@@ -15,9 +15,9 @@ def countLineChars(name):
     m = max(lines, key=lambda x: len(x))
     return len(m)
 
-n = 57
-m = 21
-p = 41
+n = 500
+m = 200
+p = 300
 A = np.random.randint(128, size=(n, m), dtype=np.uint16)
 writeMatrix(A, "A.dat")
 B = np.random.randint(128, size=(m, p), dtype=np.uint16)

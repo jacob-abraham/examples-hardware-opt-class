@@ -115,13 +115,13 @@ void* matrix_multiply1(void* arg) {
                         ii++) {                                                \
                         for(size_t jj = j; (jj < (j + BLOCKSIZE)) && (jj < p); \
                             jj++) {                                            \
-                            uint16_t sum = 0;                                  \
+                            uint16_t sum = IndexMatrix(C, ii, jj);             \
                             for(size_t kk = k;                                 \
                                 (kk < (k + BLOCKSIZE)) && (kk < m); kk++) {    \
                                 sum += IndexMatrix(A, ii, kk) *                \
                                        IndexMatrix(B, kk, jj);                 \
                             }                                                  \
-                            IndexMatrix(C, ii, jj) += sum;                     \
+                            IndexMatrix(C, ii, jj) = sum;                      \
                         }                                                      \
                     }                                                          \
                 }                                                              \
@@ -135,25 +135,18 @@ TILED_MUL(multiply3, 8);
 TILED_MUL(multiply4, 16);
 TILED_MUL(multiply5, 32);
 
-/*
-A  B  C  D
-    +
-C  D  A  B
-    =
-AC BD CA DB
-    +
-DB CA BD AC
-    =
-ACDB BDCA CABD DBAC
-*/
+__attribute((always_inline)) int32_t hadd_epi32_128(__m128i x) {
+    __m128i shuf = _mm_shuffle_epi32(x, 0b01001110);
+    x = _mm_add_epi32(x, shuf);
+    shuf = _mm_shuffle_epi32(x, 0b00011011);
+    x = _mm_add_epi32(x, shuf);
+    return (int32_t)_mm_cvtsi128_si32(x);
+}
+
 __attribute((always_inline)) uint16_t dp_4x4(__m128i a, __m128i b) {
 
     __m128i c = _mm_mullo_epi32(a, b);
-    __m128i shuf = _mm_shuffle_epi32(c, 0b01001110);
-    c = _mm_add_epi32(c, shuf);
-    shuf = _mm_shuffle_epi32(c, 0b00011011);
-    c = _mm_add_epi32(c, shuf);
-    return (uint16_t)_mm_cvtsi128_si32(c);
+    return (uint16_t)hadd_epi32_128(c);
 }
 
 __attribute((always_inline)) uint16_t dp_4x42(__m128i a, __m128i b) {
@@ -164,9 +157,6 @@ __attribute((always_inline)) uint16_t dp_4x42(__m128i a, __m128i b) {
     c = _mm_add_epi32(c, shuf);
     shuf = _mm_shuffle_epi32(c, 0b00011011);
     c = _mm_add_epi32(c, shuf);
-
-    // __m128i shuf = _mm_shuffle_epi32(c, 0b11110000);
-    // c = _mm_add_epi32(c, shuf);
     return (uint16_t)_mm_cvtsi128_si32(c);
 }
 
@@ -305,14 +295,14 @@ void* matrix_multiply6(void* arg) {
                     }
                 }
             }
-            //have to handle remainders
+            // have to handle remainders
             for(size_t ii = i; (ii < (i + 4)) && (ii < n); ii++) {
                 for(size_t jj = j; (jj < (j + 4)) && (jj < p); jj++) {
-                    uint16_t sum = 0;
+                    uint16_t sum = IndexMatrix(C, ii, jj);
                     for(size_t kk = k; (kk < (k + 4)) && (kk < m); kk++) {
                         sum += IndexMatrix(A, ii, kk) * IndexMatrix(B, kk, jj);
                     }
-                    IndexMatrix(C, ii, jj) += sum;
+                    IndexMatrix(C, ii, jj) = sum;
                 }
             }
         }
@@ -327,46 +317,46 @@ void* matrix_multiply7(void* arg) {
     size_t m = A->m;
     size_t p = B->m;
     size_t i, j, k;
-    for(i = 0; i < (n - 4); i += 4) {
-        for(j = 0; j < (p - 4); j += 4) {
-            for(k = 0; k < (m - 4); k += 4) {
+    for(i = 0; i < n; i += 8) {
+        for(j = 0; j < p; j += 8) {
+            for(k = 0; k < (m - 8); k += 8) {
+                for(size_t ii = i; (ii < (i + 8)) && (ii < n); ii++) {
+                    for(size_t jj = j; (jj < (j + 8)) && (jj < p); jj++) {
 
-#define UNROLL(_istep, _jstep)                                                 \
-    uint16_t sum##_istep##_jstep =                                             \
-        IndexMatrix(A, i + _istep, k) * IndexMatrix(B, k, j + _jstep);         \
-    sum##_istep##_jstep +=                                                     \
-        IndexMatrix(A, i + _istep, k + 1) * IndexMatrix(B, k + 1, j + _jstep); \
-    sum##_istep##_jstep +=                                                     \
-        IndexMatrix(A, i + _istep, k + 2) * IndexMatrix(B, k + 2, j + _jstep); \
-    sum##_istep##_jstep +=                                                     \
-        IndexMatrix(A, i + _istep, k + 3) * IndexMatrix(B, k + 3, j + _jstep); \
-    IndexMatrix(C, i + _istep, j + _jstep) += sum##_istep##_jstep;
+                        uint16_t sum =
+                            IndexMatrix(A, ii, k) * IndexMatrix(B, k, jj);
+                        sum += IndexMatrix(A, ii, k + 1) *
+                               IndexMatrix(B, k + 1, jj);
+                        sum += IndexMatrix(A, ii, k + 2) *
+                               IndexMatrix(B, k + 2, jj);
+                        sum += IndexMatrix(A, ii, k + 3) *
+                               IndexMatrix(B, k + 3, jj);
+                        sum += IndexMatrix(A, ii, k + 4) *
+                               IndexMatrix(B, k + 4, jj);
+                        sum += IndexMatrix(A, ii, k + 5) *
+                               IndexMatrix(B, k + 5, jj);
+                        sum += IndexMatrix(A, ii, k + 6) *
+                               IndexMatrix(B, k + 6, jj);
+                        sum += IndexMatrix(A, ii, k + 7) *
+                               IndexMatrix(B, k + 7, jj);
 
-#define UNROLL2(_istep)                                                        \
-    UNROLL(_istep, 0);                                                         \
-    UNROLL(_istep, 1);                                                         \
-    UNROLL(_istep, 2);                                                         \
-    UNROLL(_istep, 3);
-
-                UNROLL2(0);
-                UNROLL2(1);
-                UNROLL2(2);
-                UNROLL2(3);
-
-#undef UNROLL
-#undef UNROLL2
+                        IndexMatrix(C, ii, jj) += sum;
+                    }
+                }
+            }
+            // have to handle remainders
+            for(size_t ii = i; (ii < (i + 8)) && (ii < n); ii++) {
+                for(size_t jj = j; (jj < (j + 8)) && (jj < p); jj++) {
+                    uint16_t sum = IndexMatrix(C, ii, jj);
+                    for(size_t kk = k; (kk < (k + 8)) && (kk < m); kk++) {
+                        sum += IndexMatrix(A, ii, kk) * IndexMatrix(B, kk, jj);
+                    }
+                    IndexMatrix(C, ii, jj) = sum;
+                }
             }
         }
     }
-    for(; i < n; i++) {
-        for(; j < p; j++) {
-            uint16_t sum = 0;
-            for(; k < m; k++) {
-                sum += IndexMatrix(A, i, k) * IndexMatrix(B, k, j);
-            }
-            IndexMatrix(C, i, j) += sum;
-        }
-    }
+
     return NULL;
 }
 
@@ -376,51 +366,106 @@ void* matrix_multiply8(void* arg) {
     size_t m = A->m;
     size_t p = B->m;
     size_t i, j, k;
-    for(i = 0; i < (n - 4); i += 4) {
-        for(j = 0; j < (p - 4); j += 4) {
-            for(k = 0; k < (m - 4); k += 4) {
-                matrix_4x4_mul(A, B, C, i, j, k);
+    for(i = 0; i < n; i += 16) {
+        for(j = 0; j < p; j += 16) {
+            for(k = 0; k < (m - 16); k += 16) {
+                for(size_t ii = i; (ii < (i + 16)) && (ii < n); ii++) {
+                    for(size_t jj = j; (jj < (j + 16)) && (jj < p); jj++) {
+
+                        // load A row
+                        __m128i A_row1 = _mm_cvtepi16_epi32(_mm_loadu_si128(
+                            (__m128i*)(A->elm + RowColToIndex(A, ii, k))));
+                        __m128i A_row2 = _mm_cvtepi16_epi32(_mm_loadu_si128(
+                            (__m128i*)(A->elm + RowColToIndex(A, ii, k+4))));
+                        __m128i A_row3 = _mm_cvtepi16_epi32(_mm_loadu_si128(
+                            (__m128i*)(A->elm + RowColToIndex(A, ii, k+8))));
+                        __m128i A_row4 = _mm_cvtepi16_epi32(_mm_loadu_si128(
+                            (__m128i*)(A->elm + RowColToIndex(A, ii, k+12))));
+                        // load B col
+                        union {
+                            __m128i v;
+                            uint32_t i[4];
+                        } s;
+                        s.i[0] = IndexMatrix(B, k, jj);
+                        s.i[1] = IndexMatrix(B, k+1, jj);
+                        s.i[2] = IndexMatrix(B, k+2, jj);
+                        s.i[3] = IndexMatrix(B, k+3, jj);
+                        __m128i B_col1 = s.v;
+                        s.i[0] = IndexMatrix(B, k+4, jj);
+                        s.i[1] = IndexMatrix(B, k+5, jj);
+                        s.i[2] = IndexMatrix(B, k+6, jj);
+                        s.i[3] = IndexMatrix(B, k+7, jj);
+                        __m128i B_col2 = s.v;
+                        s.i[0] = IndexMatrix(B, k+8, jj);
+                        s.i[1] = IndexMatrix(B, k+9, jj);
+                        s.i[2] = IndexMatrix(B, k+10, jj);
+                        s.i[3] = IndexMatrix(B, k+11, jj);
+                        __m128i B_col3 = s.v;
+                        s.i[0] = IndexMatrix(B, k+12, jj);
+                        s.i[1] = IndexMatrix(B, k+13, jj);
+                        s.i[2] = IndexMatrix(B, k+14, jj);
+                        s.i[3] = IndexMatrix(B, k+15, jj);
+                        __m128i B_col4 = s.v;
+                        __m128i AB1 = _mm_mullo_epi32(A_row1, B_col1);
+                        __m128i AB2 = _mm_mullo_epi32(A_row2, B_col2);
+                        __m128i AB3 = _mm_mullo_epi32(A_row3, B_col3);
+                        __m128i AB4 = _mm_mullo_epi32(A_row4, B_col4);
+                        __m128i sum = _mm_add_epi32(_mm_add_epi32(AB1, AB2), _mm_add_epi32(AB3, AB4));
+                        IndexMatrix(C, ii, jj) += (uint16_t)hadd_epi32_128(sum);
+                    }
+                }
+            }
+            // have to handle remainders
+            for(size_t ii = i; (ii < (i + 16)) && (ii < n); ii++) {
+                for(size_t jj = j; (jj < (j + 16)) && (jj < p); jj++) {
+                    uint16_t sum = IndexMatrix(C, ii, jj);
+                    for(size_t kk = k; (kk < (k + 16)) && (kk < m); kk++) {
+                        sum += IndexMatrix(A, ii, kk) * IndexMatrix(B, kk, jj);
+                    }
+                    IndexMatrix(C, ii, jj) = sum;
+                }
             }
         }
     }
 
-    for(; i < n; i++) {
-        for(; j < p; j++) {
-            uint16_t sum = 0;
-            for(; k < m; k++) {
-                sum += IndexMatrix(A, i, k) * IndexMatrix(B, k, j);
-            }
-            IndexMatrix(C, i, j) += sum;
-        }
-    }
     return NULL;
 }
 
-void* matrix_multiply9(void* arg) {
-    UNPACK_ARGS(arg)
-    size_t n = A->n;
-    size_t m = A->m;
-    size_t p = B->m;
-    size_t i, j, k;
-    for(i = 0; i < (n - 4); i += 4) {
-        for(j = 0; j < (p - 4); j += 4) {
-            for(k = 0; k < (m - 4); k += 4) {
-                matrix_4x4_mul2(A, B, C, i, j, k);
-            }
-        }
-    }
+/*
+                        __m128i A_row1 = _mm_loadu_si128(
+                            (__m128i*)(A->elm + RowColToIndex(A, ii, k)));
+                        __m128i A_row2 = _mm_loadu_si128(
+                            (__m128i*)(A->elm + RowColToIndex(A, ii, k + 8)));
+                        // load B col
+                        union {
+                            __m128i v;
+                            uint16_t i[8];
+                        } s;
+                        s.i[0] = (uint16_t)IndexMatrix(B, k, jj);
+                        s.i[1] = (uint16_t)IndexMatrix(B, k + 1, jj);
+                        s.i[2] = (uint16_t)IndexMatrix(B, k + 2, jj);
+                        s.i[3] = (uint16_t)IndexMatrix(B, k + 3, jj);
+                        s.i[4] = (uint16_t)IndexMatrix(B, k + 4, jj);
+                        s.i[5] = (uint16_t)IndexMatrix(B, k + 5, jj);
+                        s.i[6] = (uint16_t)IndexMatrix(B, k + 6, jj);
+                        s.i[7] = (uint16_t)IndexMatrix(B, k + 7, jj);
+                        __m128i B_col1 = s.v;
+                        s.i[0] = (uint16_t)IndexMatrix(B, k + 8, jj);
+                        s.i[1] = (uint16_t)IndexMatrix(B, k + 9, jj);
+                        s.i[2] = (uint16_t)IndexMatrix(B, k + 10, jj);
+                        s.i[3] = (uint16_t)IndexMatrix(B, k + 11, jj);
+                        s.i[4] = (uint16_t)IndexMatrix(B, k + 12, jj);
+                        s.i[5] = (uint16_t)IndexMatrix(B, k + 13, jj);
+                        s.i[6] = (uint16_t)IndexMatrix(B, k + 14, jj);
+                        s.i[7] = (uint16_t)IndexMatrix(B, k + 15, jj);
+                        __m128i B_col2 = s.v;
+                        __m128i AB1 = _mm_mullo_epi16(A_row1, B_col1);
+                        __m128i AB2 = _mm_mullo_epi16(A_row2, B_col2);
+                        IndexMatrix(C, ii, jj) +=
+                            (uint16_t)hadd_epi32_128(_mm_add_epi16(AB1, AB2));
+*/
 
-    for(; i < n; i++) {
-        for(; j < p; j++) {
-            uint16_t sum = 0;
-            for(; k < m; k++) {
-                sum += IndexMatrix(A, i, k) * IndexMatrix(B, k, j);
-            }
-            IndexMatrix(C, i, j) += sum;
-        }
-    }
-    return NULL;
-}
+
 
 int main() {
 
@@ -439,9 +484,8 @@ int main() {
     V(multiply4)                                                               \
     V(multiply5)                                                               \
     V(multiply6)                                                               \
-    V(multiply7)                                                               \
-    V(multiply8)                                                               \
-    V(multiply9)
+    V(multiply7) \
+    V(multiply8)
 
 #define TEST_ACCURACY(name)                                                    \
     memset(C->elm, 0, sizeof(uint16_t) * C->n * C->m);                         \
@@ -453,8 +497,6 @@ int main() {
     benchmark(matrix_##name, (void*)(&arg), 1, 10, 0b00, NULL);                \
     benchmark(matrix_##name, (void*)(&arg), 50, 5, 0b01, NULL);
 
-    // TEST_ACCURACY(multiply6)
-    // TEST_ACCURACY(multiply66)
     ALGOS(TEST_ACCURACY)
     ALGOS(TEST_SPEED)
 }

@@ -2,8 +2,7 @@ CC= clang
 AS= nasm
 LD= clang
 
-override CFLAGS+= -Wall -Wextra -g
-# -O3
+override CFLAGS+= -Wall -Wextra -g -O3
 override CFLAGS+= -msse -msse2 -msse3 -mssse3 -msse4.1 -msse4.2 -msse4 -mavx -mavx2 -mfma
 override CFLAGS+= -masm=intel
 
